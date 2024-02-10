@@ -27,101 +27,155 @@ def is_file_open(filename):
         # Mencoba membuka file dalam mode penulisan (write mode)
         with open(filename, 'a') as f:
             pass
-        return False  # Jika berhasil membuka file, maka file tidak dibuka oleh aplikasi lain
+        return
     except PermissionError:
-        return True   # Jika mendapatkan exception PermissionError, maka file dibuka oleh aplikasi lain
+        excel_app = win32com.client.Dispatch("Excel.Application")
+        wb = excel_app.Workbooks.Open(filename)
+        wb.Save()
+        wb.Close(SaveChanges=False)
+        excel_app.Quit()
+        return 
 
+def cek(var,text):
+    if var == False:
+        sg.popup(text)
+        return False
+    return True
 
 def update_nilai_tr():
+    nama = False
+    nim = False
+    p_nim = False
+    jenis_tr = False
+
+    # Kelas
     if len(values['-KELAS-']) == 0:
         sg.popup('Mohon pilih kelasnya terlebih dahulu!')
         return
-    name = str(values['-KELAS-'][0])
-    ws = workbook[name]
+
+    # NIM
+    if str(values['-NIM-']) == ' ' or str(values['-NIM-']) == '':
+        sg.popup('Masukkan NIM terlebih dahulu!')
+        return
+    
+    # Jenis TR
+    if len(values['-TR-']) == 0:
+        sg.popup('Mohon pilih TR terlebih dahulu!')
+        return
+
+    # Nilai TR
+    if str(values['-NILAI-TR-']).isdigit():
+        nilai = int(values['-NILAI-TR-'])
+        if nilai < 0 or nilai > 100:
+            sg.popup('Masukkan nilai dengan range 0 s/d 100')
+            return
+    else:
+        sg.popup('Masukkan nilai dengan range 0 s/d 100')
+        return
+
+    # Pencarian cell
+    kelas = str(values['-KELAS-'][0])
+    ws = workbook[kelas]
     for k in ws.iter_cols():
         for c in k:
-            if c.value == "NIM" or c.value == "nim":
+            if c.value == "NIM" or c.value == "nim" or c.value == "Nim":
                 nim_col = c.column
-    for row in ws.iter_rows(min_col=nim_col, max_col=nim_col):
-        for cell in row:
-            if str(values['-NIM-']) == ' ' or str(values['-NIM-']) == '':
-                sg.popup('Masukkan NIM terlebih dahulu!')
-                return
-            elif str(cell.value) == str(values['-NIM-']):
-                for kolom in ws.iter_cols():
-                    for cel in kolom:
-                        if len(values['-TR-']) == 0:
-                            sg.popup('Mohon pilih TR terlebih dahulu!')
-                            return
-                        if cel.value == values['-TR-'][0]:
-                            if str(values['-NILAI-TR-']).isdigit():
-                                nilai = int(values['-NILAI-TR-'])
-                                if nilai < 0 or nilai > 100:
-                                    sg.popup('Masukkan nilai dengan range 0 s/d 100')
-                                    return
-                            else:
-                                sg.popup('Masukkan nilai dengan range 0 s/d 100')
-                                return
-                            ws.cell(row=cell.row, column=cel.column, value=int(values['-NILAI-TR-']))
-                            workbook.save(filename=filename)
-                            for m in ws.iter_cols():
-                                for n in m:
-                                    if n.value == "Nama" or n.value == "nama" or n.value == "NAMA":
-                                        nama_col = n.column
-                            nama_praktikan = ws.cell(row=cell.row, column=nama_col).value
-                            nim_praktikan = cell.value
-                            teks = 'Nilai '+str(values['-TR-'][0])+' praktikan '+str(nama_praktikan)+' ('+str(nim_praktikan)+') telah di update!'
-                            sg.popup(teks)
-                            return
-                sg.popup('Pastikan kolom '+str(values['-TR-'][0])+' tersedia!')
-                return
-    sg.popup('Praktikan dengan NIM '+str(values['-NIM-'])+' tidak ditemukan!')
+                nim = True
+                for row in ws.iter_rows(min_col=nim_col, max_col=nim_col):
+                    for cell in row:
+                        if str(cell.value) == str(values['-NIM-']):
+                            nim_row = cell.row
+                            p_nim = True
+            if c.value == values['-TR-'][0]:
+                tr_col = c.column
+                jenis_tr = True
+            if c.value == "Nama" or c.value == "NAMA" or c.value == "nama":
+                nama_col = c.column
+                nama = True
+    if cek(nim,"Pastikan kolom 'NIM' tersedia!") == False:
+        return
+    if cek(p_nim,'Praktikan dengan nim '+str(values['-NIM-'])+' tidak ditemukan!') == False:
+        return
+    if cek(jenis_tr,"Pastikan kolom '"+str(values['-TR-'][0])+"' tersedia!") == False:
+        return
+    if cek(nama,"Pastikan kolom 'Nama' tersedia!") == False:
+        return
+
+    # Ubah nilai cell
+    ws.cell(row=nim_row, column=tr_col, value=int(values['-NILAI-TR-']))
+    workbook.save(filename=filename)
+    nama_praktikan = ws.cell(row=nim_row, column=nama_col).value
+    nim_praktikan = ws.cell(row=nim_row, column=nim_col).value
+    teks = 'Nilai '+str(values['-TR-'][0])+' praktikan '+str(nama_praktikan)+' ('+str(nim_praktikan)+') telah di update!'
+    sg.popup(teks)
     return
-            
+
 def update_nilai_ta():
+    nama = False
+    nim = False
+    p_nim = False
+    jenis_ta = False
+
+    # Kelas
     if len(values['-KELAS-']) == 0:
         sg.popup('Mohon pilih kelasnya terlebih dahulu!')
         return
-    name = str(values['-KELAS-'][0])
-    ws = workbook[name]
+
+    # NIM
+    if str(values['-NIM-']) == ' ' or str(values['-NIM-']) == '':
+        sg.popup('Masukkan NIM terlebih dahulu!')
+        return
+    
+    # Jenis TR
+    if len(values['-TA-']) == 0:
+        sg.popup('Mohon pilih TA terlebih dahulu!')
+        return
+
+    # Nilai TR
+    if str(values['-NILAI-TA-']).isdigit():
+        nilai = int(values['-NILAI-TA-'])
+        if nilai < 0 or nilai > 100:
+            sg.popup('Masukkan nilai dengan range 0 s/d 100')
+            return
+    else:
+        sg.popup('Masukkan nilai dengan range 0 s/d 100')
+        return
+
+    # Pencarian cell
+    kelas = str(values['-KELAS-'][0])
+    ws = workbook[kelas]
     for k in ws.iter_cols():
         for c in k:
-            if c.value == "NIM" or c.value == "nim":
+            if c.value == "NIM" or c.value == "nim" or c.value == "Nim":
                 nim_col = c.column
-    for row in ws.iter_rows(min_col=nim_col, max_col=nim_col):
-        for cell in row:
-            if str(values['-NIM-']) == ' ' or str(values['-NIM-']) == '':
-                sg.popup('Masukkan NIM terlebih dahulu!')
-                return
-            elif str(cell.value) == str(values['-NIM-']):
-                for kolom in ws.iter_cols():
-                    for cel in kolom:
-                        if len(values['-TA-']) == 0:
-                            sg.popup('Mohon pilih TA terlebih dahulu!')
-                            return
-                        if cel.value == values['-TA-'][0]:
-                            if str(values['-NILAI-TA-']).isdigit():
-                                nilai = int(values['-NILAI-TA-'])
-                                if nilai < 0 or nilai > 100:
-                                    sg.popup('Masukkan nilai dengan range 0 s/d 100')
-                                    return
-                            else:
-                                sg.popup('Masukkan nilai dengan range 0 s/d 100')
-                                return
-                            ws.cell(row=cell.row, column=cel.column, value=int(values['-NILAI-TA-']))
-                            workbook.save(filename=filename)
-                            for m in ws.iter_cols():
-                                for n in m:
-                                    if n.value == "Nama" or n.value == "nama" or n.value == "NAMA":
-                                        nama_col = n.column
-                            nama_praktikan = ws.cell(row=cell.row, column=nama_col).value
-                            nim_praktikan = ws.cell(row=cell.row, column=3).value
-                            teks = 'Nilai '+str(values['-TA-'][0])+' praktikan '+str(nama_praktikan)+' ('+str(nim_praktikan)+') telah di update!'
-                            sg.popup(teks)
-                            return
-                sg.popup('Pastikan kolom '+str(values['-TA-'][0])+' tersedia!')
-                return
-    sg.popup('Praktikan dengan NIM '+str(values['-NIM-'])+' tidak ditemukan!')
+                nim = True
+                for row in ws.iter_rows(min_col=nim_col, max_col=nim_col):
+                    for cell in row:
+                        if str(cell.value) == str(values['-NIM-']):
+                            nim_row = cell.row
+                            p_nim = True
+            if c.value == values['-TA-'][0]:
+                ta_col = c.column
+                jenis_ta = True
+            if c.value == "Nama" or c.value == "NAMA" or c.value == "nama":
+                nama_col = c.column
+                nama = True
+    if cek(nim,"Pastikan kolom 'NIM' tersedia!") == False:
+        return
+    if cek(p_nim,'Praktikan dengan nim '+str(values['-NIM-'])+' tidak ditemukan!') == False:
+        return
+    if cek(jenis_ta,"Pastikan kolom '"+str(values['-TA-'][0])+"' tersedia!") == False:
+        return
+    if cek(nama,"Pastikan kolom 'Nama' tersedia!") == False:
+        return
+
+    # Ubah nilai cell
+    ws.cell(row=nim_row, column=ta_col, value=int(values['-NILAI-TA-']))
+    workbook.save(filename=filename)
+    nama_praktikan = ws.cell(row=nim_row, column=nama_col).value
+    nim_praktikan = ws.cell(row=nim_row, column=nim_col).value
+    teks = 'Nilai '+str(values['-TA-'][0])+' praktikan '+str(nama_praktikan)+' ('+str(nim_praktikan)+') telah di update!'
+    sg.popup(teks)
     return
             
 while True:
@@ -132,17 +186,12 @@ while True:
         break
     elif event == "Buka Excel":
         if values['-FILE-'] == ' ' or values['-FILE-'] == '':
-            sg.popup('Mohon pilih filenya terlebih dahulu!')
+            sg.popup("Klik tombol 'Browse' untuk memilih file!")
         else:
             filename = values["-FILE-"]
             if os.path.isfile(filename):
                 nama_file = filename
-                if is_file_open(nama_file):
-                    excel_app = win32com.client.Dispatch("Excel.Application")
-                    wb = excel_app.Workbooks.Open(nama_file)
-                    wb.Save()
-                    wb.Close(SaveChanges=False)
-                    excel_app.Quit()
+                is_file_open(nama_file)
                 workbook = load_workbook(filename=nama_file)
                 sheet = workbook.sheetnames
                 col1 = sg.Column([
@@ -167,18 +216,10 @@ while True:
             else:
                 sg.popup('File tidak ditemukan!')
     elif event == 'Simpan Nilai TR':
-        if is_file_open(nama_file):
-            excel_app = win32com.client.Dispatch("Excel.Application")
-            wb = excel_app.Workbooks.Open(nama_file)
-            wb.Close(SaveChanges=True)
-            excel_app.Quit()
+        is_file_open(nama_file)
         update_nilai_tr()
     elif event == "Simpan Nilai TA":
-        if is_file_open(nama_file):
-            excel_app = win32com.client.Dispatch("Excel.Application")
-            wb = excel_app.Workbooks.Open(nama_file)
-            wb.Close(SaveChanges=True)
-            excel_app.Quit()
+        is_file_open(nama_file)
         update_nilai_ta()
     elif event == 'Kembali':
         halaman_awal = [[
