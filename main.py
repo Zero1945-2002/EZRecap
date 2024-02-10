@@ -2,7 +2,6 @@ import PySimpleGUI as sg
 from openpyxl import load_workbook
 import os
 import subprocess
-import win32com.client
 
 file_types = [("Excel Workbook (*.xlsx)", "*.xlsx"),
               ("Excel 97-2003 Workbook (*.xls)", "*.xls"),
@@ -12,24 +11,10 @@ halaman_awal = [[
             sg.Text("Excel File"),
             sg.Input(tooltip='klik tombol browse untuk memilih file',default_text='',size=(25, 1), key="-FILE-"),
             sg.FileBrowse(file_types=file_types),
-            sg.Button("Buka Excel")
+            sg.Button("Confirm")
         ]]
 
 window = sg.Window("Rekap Nilai", halaman_awal)
-
-def is_file_open(filename):
-    try:
-        # Mencoba membuka file dalam mode penulisan (write mode)
-        with open(filename, 'a') as f:
-            pass
-        return
-    except PermissionError:
-        excel_app = win32com.client.Dispatch("Excel.Application")
-        wb = excel_app.Workbooks.Open(filename)
-        wb.Save()
-        wb.Close(SaveChanges=False)
-        excel_app.Quit()
-        return 
 
 def cek(var,text):
     if var == False:
@@ -98,7 +83,11 @@ def update_nilai_tr():
 
     # Ubah nilai cell
     ws.cell(row=nim_row, column=tr_col, value=int(values['-NILAI-TR-']))
-    workbook.save(filename=filename)
+    try:
+        workbook.save(filename=filename)
+    except PermissionError:
+        sg.popup('Harap tutup terlebih dahulu file yang terbuka!')
+        return
     nama_praktikan = ws.cell(row=nim_row, column=nama_col).value
     nim_praktikan = ws.cell(row=nim_row, column=nim_col).value
     teks = 'Nilai '+str(values['-TR-'][0])+' praktikan '+str(nama_praktikan)+' ('+str(nim_praktikan)+') telah di update!'
@@ -166,7 +155,11 @@ def update_nilai_ta():
 
     # Ubah nilai cell
     ws.cell(row=nim_row, column=ta_col, value=int(values['-NILAI-TA-']))
-    workbook.save(filename=filename)
+    try:
+        workbook.save(filename=filename)
+    except PermissionError:
+        sg.popup('Harap tutup terlebih dahulu file yang terbuka!')
+        return
     nama_praktikan = ws.cell(row=nim_row, column=nama_col).value
     nim_praktikan = ws.cell(row=nim_row, column=nim_col).value
     teks = 'Nilai '+str(values['-TA-'][0])+' praktikan '+str(nama_praktikan)+' ('+str(nim_praktikan)+') telah di update!'
@@ -176,17 +169,15 @@ def update_nilai_ta():
 while True:
     event, values = window.read()
     print(event, values)
-
     if event == sg.WIN_CLOSED:
         break
-    elif event == "Buka Excel":
+    elif event == "Confirm":
         if values['-FILE-'] == ' ' or values['-FILE-'] == '':
             sg.popup("Klik tombol 'Browse' untuk memilih file!")
         else:
             filename = values["-FILE-"]
             if os.path.isfile(filename):
                 nama_file = filename
-                is_file_open(nama_file)
                 workbook = load_workbook(filename=nama_file)
                 sheet = workbook.sheetnames
                 col1 = sg.Column([
@@ -198,30 +189,36 @@ while True:
             else:
                 sg.popup('File tidak ditemukan!')
     elif event == 'Simpan Nilai TR':
-        is_file_open(nama_file)
         update_nilai_tr()
-    elif event == "Simpan Nilai TA":
-        is_file_open(nama_file)
+    elif event == 'Simpan Nilai TA':
         update_nilai_ta()
     elif event == 'Kembali':
         halaman_awal = [[
             sg.Text("Excel File"),
             sg.Input(tooltip='klik tombol browse untuk memilih file',default_text='',size=(25, 1), key="-FILE-"),
             sg.FileBrowse(file_types=file_types),
-            sg.Button("Buka Excel")
+            sg.Button("Confirm")
         ]]
         window.close()
         window = sg.Window('Rekap Nilai', halaman_awal)
     elif event == 'Buka File':
         try:
             # Membuka file Excel dengan aplikasi yang terkait
-            subprocess.Popen(['start', '', nama_file], shell=True)
-            sg.popup('File berhasil dibuka!')
-            
+            result = subprocess.run(['start', '', nama_file], shell=True, capture_output=True, text=True)
+            if result.stderr:
+                error_message = result.stderr.strip()
+                if "The process cannot access the file because it is being used by another process." in error_message:
+                    sg.popup('File sedang digunakan oleh proses lain dan telah terbuka!')
+                else:
+                    sg.popup('Error:', error_message)
+            else:
+                sg.popup('File berhasil dibuka!')
+        except PermissionError as e:
+                sg.popup('PermissionError:', str(e))
         except FileNotFoundError:
-            print(f"File tidak ditemukan")
+            sg.popup(f"File tidak ditemukan")
         except Exception as e:
-            print("Terjadi kesalahan:", str(e))
+            sg.popup("Terjadi kesalahan:", str(e))
     elif event == '-KELAS-': 
         kelas = str(values['-KELAS-'][0])
         ws = workbook[kelas]
@@ -238,7 +235,6 @@ while True:
                 if teks[0].upper() == "T" and teks[1].upper() == "A":
                     TA.append(c.value)
                     cek_ta = cek_ta + 1
-        is_file_open(nama_file)
         workbook = load_workbook(filename=nama_file)
         sheet = workbook.sheetnames
         col1 = sg.Column([
